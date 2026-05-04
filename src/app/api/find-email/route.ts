@@ -2,21 +2,65 @@
 
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { supabase } from "@/lib/supabase";
 
-const genAI = new GoogleGenerativeAI(
-    process.env.GEMINI_API_KEY!
-);
+const EMAIL_REGEX =
+    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 
-export async function POST(req: Request) {
+function uniqueEmails(
+    emails: string[]
+) {
+    return [
+        ...new Set(
+            emails.map((e) =>
+                e.trim().toLowerCase()
+            )
+        ),
+    ];
+}
+
+function cleanJson(
+    text: string
+) {
+    return text
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
+}
+
+function safeParse(
+    text: string
+) {
     try {
-        const { company } = await req.json();
+        return JSON.parse(text);
+    } catch {
+        return null;
+    }
+}
 
-        if (!company || !company.trim()) {
+function extractEmails(
+    text: string
+) {
+    return text.match(
+        EMAIL_REGEX
+    ) || [];
+}
+
+export async function POST(
+    req: Request
+) {
+    try {
+        const { company, serpApiKey, geminiApiKey } =
+            await req.json();
+
+        if (
+            !company ||
+            !company.trim()
+        ) {
             return NextResponse.json(
                 {
                     success: false,
-                    message: "Company name is required",
+                    message:
+                        "Company name is required",
                 },
                 { status: 400 }
             );
@@ -25,186 +69,224 @@ export async function POST(req: Request) {
         const cleanCompany =
             company.trim();
 
-        /* ----------------------------------
-           1. CHECK DATABASE FIRST
-        -----------------------------------*/
-        const { data: existing } =
-            await supabase
-                .from("company_contacts")
-                .select("*")
-                .ilike(
-                    "company_name",
-                    cleanCompany
-                )
-                .limit(3);
-
-        if (
-            existing &&
-            existing.length > 0
-        ) {
-            const emails =
-                existing.map(
-                    (row) => row.email
-                );
-
-            return NextResponse.json({
-                success: true,
-                emails,
-                source: "database",
-                confidence:
-                    existing[0]
-                        ?.confidence ||
-                    "verified",
-            });
+        const serpKey = serpApiKey || process.env.SERP_API_KEY;
+        if (!serpKey) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message:
+                        "Serper API Key is required",
+                },
+                { status: 400 }
+            );
         }
 
+        const geminiKey = geminiApiKey || process.env.GEMINI_API_KEY;
+
         /* ----------------------------------
-           2. GEMINI SEARCH + EXTRACTION
+           1. SERPER SEARCH (USA MODE)
         -----------------------------------*/
-        const model =
-            genAI.getGenerativeModel({
-                model:
-                    "gemini-2.5-flash-lite",
-
-                tools: [
-                    {
-                        // @ts-ignore
-                        googleSearch: {},
+        const serpRes =
+            await fetch(
+                "https://google.serper.dev/search",
+                {
+                    method: "POST",
+                    headers: {
+                        "X-API-KEY":
+                            serpKey,
+                        "Content-Type":
+                            "application/json",
                     },
-                ],
+                    body: JSON.stringify({
+                        q: `${cleanCompany} HR Career Email`,
+                        gl: "us",
+                        hl: "en",
+                    }),
+                }
+            );
 
-                systemInstruction:
-                    "You are a web research extraction assistant. Only extract facts explicitly found in search results or trusted public sources. Never infer company websites or invent emails. Return only valid JSON.",
+        const serpData =
+            await serpRes.json();
 
-                generationConfig: {
-                    temperature: 0.1,
-                },
-            });
+        const organic =
+            serpData.organic ||
+            [];
 
+        const answerBox =
+            serpData.answerBox ||
+            {};
 
-        const prompt = `
-Perform a Google Search for the exact company name: "${company}"
+        const knowledgeGraph =
+            serpData.knowledgeGraph ||
+            {};
 
-Rules:
-1. First determine whether this exact company exists publicly.
-2. Match the company name carefully. Do not confuse with similarly named businesses.
-3. Find the official website or trustworthy public profile.
-4. Search snippets, official pages, LinkedIn, directories, careers/contact pages.
+        const allSearchText = [
+            JSON.stringify(
+                answerBox
+            ),
+            JSON.stringify(
+                knowledgeGraph
+            ),
+            ...organic.map(
+                (item: any) =>
+                    `${item.title || ""}
+${item.snippet || ""}
+${item.link || ""}`
+            ),
+        ].join("\n\n");
 
-Extract ONLY email addresses that are explicitly visible in search results or public pages.
+        /* ----------------------------------
+           3. EXTRACT EMAILS FROM SERPER
+        -----------------------------------*/
+        let serpEmails =
+            extractEmails(
+                allSearchText
+            );
 
-DO NOT:
-- invent domains
-- assume company website
-- create likely emails
-- use similar companies
-- guess from company name
+        serpEmails =
+            uniqueEmails(
+                serpEmails
+            );
 
-If exact company cannot be confidently identified, return empty results.
+        /* ----------------------------------
+           4. GEMINI FAILSAFE SEARCH
+           ONLY APPEND MORE EMAILS
+        -----------------------------------*/
+        let geminiEmails: string[] =
+            [];
 
-Return ONLY valid JSON:
+        let domain = "";
+        let confidence =
+            "unknown";
+
+        if (geminiKey) {
+            try {
+                const genAI = new GoogleGenerativeAI(geminiKey);
+                const model =
+                    genAI.getGenerativeModel(
+                        {
+                            model:
+                                "gemini-2.5-flash-lite",
+
+                            systemInstruction:
+                                "You are an email extraction assistant. Only extract public emails. Never invent emails. Return only JSON.",
+
+                            generationConfig:
+                            {
+                                temperature:
+                                    0.1,
+                            },
+                        }
+                    );
+
+                const prompt = `
+Company Name:
+${cleanCompany}
+
+Search Result Data:
+${allSearchText}
+
+Already Found Emails:
+${JSON.stringify(
+                    serpEmails
+                )}
+
+Task:
+Look carefully through the provided text.
+
+Find ONLY additional real public emails that are visible in the text but may have been missed.
+
+DO NOT guess.
+DO NOT generate likely emails.
+DO NOT remove existing emails.
+
+Return ONLY JSON:
 
 {
-  "company_matched": true,
-  "exact_emails_found": [],
-  "source_url": "",
-  "verified_domain": "",
+  "emails": [],
+  "domain": "",
   "confidence": "high|medium|low"
 }
 `;
 
-        const result = await model.generateContent(prompt);
+                const result =
+                    await model.generateContent(
+                        prompt
+                    );
 
-        const raw = result.response.text();
+                const raw =
+                    result.response.text();
 
-        const cleaned = raw
-            .replace(/```json/g, "")
-            .replace(/```/g, "")
-            .trim();
+                const parsed =
+                    safeParse(
+                        cleanJson(
+                            raw
+                        )
+                    );
 
-        const parsed = JSON.parse(cleaned);
+                if (parsed) {
+                    geminiEmails =
+                        parsed.emails ||
+                        [];
 
-        let emails =
-            parsed.emails || [];
+                    domain =
+                        parsed.domain ||
+                        "";
 
-        const domain =
-            parsed.domain || "";
-
-        const confidence =
-            parsed.confidence ||
-            "unknown";
-
-        const foundOn =
-            parsed.found_on ||
-            "gemini-search";
+                    confidence =
+                        parsed.confidence ||
+                        "unknown";
+                }
+            } catch {
+                // Gemini fallback failure ignored
+            }
+        }
 
         /* ----------------------------------
-           3. CLEAN / VALIDATE EMAILS
+           5. APPEND BOTH SOURCES
         -----------------------------------*/
-        emails = emails
-            .filter(
-                (email: string) =>
-                    typeof email ===
-                    "string"
-            )
-            .map(
-                (email: string) =>
-                    email
-                        .trim()
-                        .toLowerCase()
-            )
-            .filter(
-                (email: string) =>
-                    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-                        email
-                    )
+        let finalEmails =
+            uniqueEmails([
+                ...serpEmails,
+                ...geminiEmails,
+            ]);
+
+        finalEmails =
+            finalEmails.slice(
+                0,
+                3
             );
 
-        emails = [
-            ...new Set(emails),
-        ].slice(0, 3);
-
-        if (emails.length === 0) {
+        if (
+            finalEmails.length ===
+            0
+        ) {
             return NextResponse.json({
                 success: false,
                 message:
-                    "No verified emails found",
+                    "No emails found",
             });
         }
 
-        /* ----------------------------------
-           4. SAVE TO SUPABASE
-        -----------------------------------*/
-        for (const email of emails) {
-            await supabase
-                .from(
-                    "company_contacts"
-                )
-                .upsert(
-                    {
-                        company_name:
-                            cleanCompany,
-                        domain,
-                        email,
-                        confidence,
-                        source: foundOn,
-                    },
-                    {
-                        onConflict:
-                            "email",
-                    }
-                );
+        if (!domain) {
+            domain =
+                finalEmails[0].split(
+                    "@"
+                )[1] || "";
         }
 
+
+
         /* ----------------------------------
-           5. RETURN TO FRONTEND
+           7. RETURN TO FRONTEND
         -----------------------------------*/
         return NextResponse.json({
             success: true,
-            emails,
+            emails: finalEmails,
             domain,
-            source: foundOn,
             confidence,
+            source:
+                "serper+gemini",
         });
     } catch (error: any) {
         console.error(

@@ -7,6 +7,15 @@ export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
 
+  const [emailUser, setEmailUser] = useState("");
+  const [emailPass, setEmailPass] = useState("");
+  const [serpApiKey, setSerpApiKey] = useState("");
+  const [geminiApiKey, setGeminiApiKey] = useState("");
+
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [senderName, setSenderName] = useState("");
+  const [settingsSaved, setSettingsSaved] = useState(false);
+
   const [subject, setSubject] = useState(
     "Application for Software Developer Opportunities at {{company}}"
   );
@@ -20,7 +29,7 @@ I am writing to express my interest in opportunities at your company. Please fin
 Thank you for your time.
 
 Best regards,
-Name`);
+{{name}}`);
 
   const [testEmail, setTestEmail] = useState(
     "test@gmail.com"
@@ -86,10 +95,17 @@ Name`);
       try {
         setIsRunning(true);
         const formData = new FormData();
+        const finalSubjectTest = subject.replace(/{{company}}/g, "[Test Company]");
+        const finalBodyTest = emailBody
+          .replace(/{{company}}/g, "[Test Company]")
+          .replace(/{{name}}/g, senderName || "[Your Name]");
+
         formData.append("to", testEmail);
-        formData.append("subject", "Test Email from Job Applier");
-        formData.append("text", "This is a successful test email from Job Applier.");
+        formData.append("subject", finalSubjectTest);
+        formData.append("text", finalBodyTest);
         formData.append("resume", resumeFile);
+        formData.append("emailUser", emailUser);
+        formData.append("emailPass", emailPass);
 
         const res = await fetch("/api/send-email", {
           method: "POST",
@@ -97,6 +113,11 @@ Name`);
         });
 
         const data = await res.json();
+        if (res.status === 400 && data.message?.toLowerCase().includes("credentials")) {
+          alert("Missing Email Credentials! Please add them in Settings or .env.local");
+          setIsRunning(false);
+          return;
+        }
         if (data.success) {
           setLogs((prev) => [`Test email sent to ${testEmail}`, ...prev]);
         } else {
@@ -126,7 +147,7 @@ Name`);
         const lookupRes = await fetch("/api/find-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ company }),
+          body: JSON.stringify({ company, serpApiKey, geminiApiKey }),
         });
 
         // 🛑 HANDLE FREE TIER RATE LIMITS
@@ -139,6 +160,12 @@ Name`);
 
         const lookupData = await lookupRes.json();
 
+        if (lookupRes.status === 400 && lookupData.message?.toLowerCase().includes("api key")) {
+          alert("Missing Serper API Key! Please add it in Settings or .env.local");
+          setIsRunning(false);
+          return;
+        }
+
         if (!lookupData.success || !lookupData.emails || lookupData.emails.length === 0) {
           setFailedCount((prev) => prev + 1);
           setLogs((prev) => [`No emails found for ${company}`, ...prev]);
@@ -147,14 +174,18 @@ Name`);
         }
 
         const emails = lookupData.emails;
-        const finalSubject = subject.replace("{{company}}", company);
-        const finalBody = emailBody.replace(/{{company}}/g, company);
+        const finalSubject = subject.replace(/{{company}}/g, company);
+        const finalBody = emailBody
+          .replace(/{{company}}/g, company)
+          .replace(/{{name}}/g, senderName || "[Your Name]");
 
         const formData = new FormData();
         emails.forEach((email: string) => formData.append("to", email));
         formData.append("subject", finalSubject);
         formData.append("text", finalBody);
         formData.append("resume", resumeFile);
+        formData.append("emailUser", emailUser);
+        formData.append("emailPass", emailPass);
 
         const sendRes = await fetch("/api/send-email", {
           method: "POST",
@@ -162,6 +193,12 @@ Name`);
         });
 
         const sendData = await sendRes.json();
+
+        if (sendRes.status === 400 && sendData.message?.toLowerCase().includes("credentials")) {
+          alert("Missing Email Credentials! Please add them in Settings or .env.local");
+          setIsRunning(false);
+          return;
+        }
 
         if (sendData.success) {
           setSentCount((prev) => prev + 1);
@@ -194,21 +231,24 @@ Name`);
     <main className="min-h-screen bg-zinc-950 text-white flex">
       {/* Sidebar */}
       <aside className="hidden md:flex w-72 bg-zinc-900 border-r border-zinc-800 flex-col p-6">
-        <h1 className="text-2xl font-bold mb-10">
-          Job Applier
-        </h1>
+        <div className="flex items-center gap-3 mb-10">
+          <img src="/icon.svg" alt="ApplyCation Logo" className="w-8 h-8" />
+          <h1 className="text-2xl font-bold">
+            ApplyCation
+          </h1>
+        </div>
 
         <nav className="space-y-3">
-          <div className="bg-blue-600/20 border border-blue-500 text-blue-300 px-4 py-3 rounded-xl">
+          <div
+            onClick={() => setActiveTab("dashboard")}
+            className={`${activeTab === "dashboard" ? "bg-blue-600/20 border border-blue-500 text-blue-300" : "hover:bg-zinc-800 text-zinc-300"} px-4 py-3 rounded-xl cursor-pointer transition-colors`}
+          >
             Dashboard
           </div>
-          <div className="px-4 py-3 rounded-xl hover:bg-zinc-800 cursor-pointer">
-            Campaigns
-          </div>
-          <div className="px-4 py-3 rounded-xl hover:bg-zinc-800 cursor-pointer">
-            Logs
-          </div>
-          <div className="px-4 py-3 rounded-xl hover:bg-zinc-800 cursor-pointer">
+          <div
+            onClick={() => setActiveTab("settings")}
+            className={`${activeTab === "settings" ? "bg-blue-600/20 border border-blue-500 text-blue-300" : "hover:bg-zinc-800 text-zinc-300"} px-4 py-3 rounded-xl cursor-pointer transition-colors`}
+          >
             Settings
           </div>
         </nav>
@@ -217,170 +257,284 @@ Name`);
       {/* Main */}
       <section className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold mb-2">
-            Dashboard
-          </h2>
-          <p className="text-zinc-400 mb-8">
-            Apply smarter. Automate outreach.
-          </p>
+          {activeTab === "dashboard" && (
+            <>
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-4xl font-bold">
+                    Dashboard
+                  </h2>
+                  <a
+                    href="https://github.com/Akshais97/JobApplier/blob/main/README.md"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block bg-zinc-950 text-blue-400 hover:bg-blue-900/20 font-semibold px-4 py-1.5 rounded-xl transition-colors text-sm"
+                  >
+                    Setup Guide
+                  </a>
+                </div>
+                <p className="text-zinc-400">
+                  Apply smarter. Automate outreach.
+                  <br />
+                  Fully Open Source. No Data Tracking/Collection.
+                  <br />
+                  Use your own free API Keys to unlock the future.
+                </p>
+              </div>
 
-          {/* Stats */}
-          <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-            <Card title="Companies" value={companies.length} />
-            <Card title="Sent" value={sentCount} color="text-emerald-400" />
-            <Card title="Failed" value={failedCount} color="text-red-400" />
-            <Card title="Progress" value={`${progress}%`} color="text-blue-400" />
-          </div>
+              {/* Stats */}
+              <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+                <Card title="Companies" value={companies.length} />
+                <Card title="Sent" value={sentCount} color="text-emerald-400" />
+                <Card title="Failed" value={failedCount} color="text-red-400" />
+                <Card title="Progress" value={`${progress}%`} color="text-blue-400" />
+              </div>
 
-          {/* Progress */}
-          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 mb-8">
-            <div className="flex justify-between mb-3">
-              <span>Campaign Progress</span>
-              <span>{progress}%</span>
-            </div>
+              {/* Progress */}
+              <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 mb-8">
+                <div className="flex justify-between mb-3">
+                  <span>Sending Progress</span>
+                  <span>{progress}%</span>
+                </div>
 
-            <div className="h-3 bg-zinc-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-600 transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="grid xl:grid-cols-2 gap-8">
-            {/* Left */}
-            <div className="space-y-8">
-              <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
-                <h3 className="text-2xl font-semibold mb-4">
-                  Upload Companies
-                </h3>
-
-                <label className="inline-block bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded-xl cursor-pointer">
-                  Choose TXT File
-                  <input
-                    type="file"
-                    accept=".txt"
-                    className="hidden"
-                    onChange={(e) =>
-                      setSelectedFile(
-                        e.target.files?.[0] || null
-                      )
-                    }
+                <div className="h-3 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 transition-all"
+                    style={{ width: `${progress}%` }}
                   />
-                </label>
-
-                {selectedFile && (
-                  <p className="text-zinc-400 mt-3 text-sm">
-                    {selectedFile.name}
-                  </p>
-                )}
-
-                <div className="flex gap-3 mt-5">
-                  <button
-                    onClick={parseCompanies}
-                    className="bg-white text-black px-5 py-3 rounded-xl font-semibold"
-                  >
-                    Load Companies
-                  </button>
-
-                  <button
-                    onClick={clearAll}
-                    className="border border-zinc-700 px-5 py-3 rounded-xl"
-                  >
-                    Clear
-                  </button>
                 </div>
               </div>
 
-              <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
-                <h3 className="text-2xl font-semibold mb-4">
-                  Upload Resume
-                </h3>
+              <div className="grid xl:grid-cols-2 gap-8">
+                {/* Left */}
+                <div className="space-y-8">
+                  <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+                    <h3 className="text-2xl font-semibold mb-4">
+                      Upload Companies
+                    </h3>
 
-                <label className="inline-block bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded-xl cursor-pointer">
-                  Choose Resume
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx"
-                    className="hidden"
-                    onChange={(e) =>
-                      setResumeFile(
-                        e.target.files?.[0] || null
-                      )
-                    }
-                  />
-                </label>
+                    <label className="inline-block bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded-xl cursor-pointer">
+                      Choose TXT File
+                      <input
+                        type="file"
+                        accept=".txt"
+                        className="hidden"
+                        onChange={(e) =>
+                          setSelectedFile(
+                            e.target.files?.[0] || null
+                          )
+                        }
+                      />
+                    </label>
 
-                {resumeFile && (
-                  <p className="text-zinc-400 mt-3 text-sm">
-                    {resumeFile.name}
-                  </p>
-                )}
-              </div>
-            </div>
+                    {selectedFile && (
+                      <p className="text-zinc-400 mt-3 text-sm">
+                        {selectedFile.name}
+                      </p>
+                    )}
 
-            {/* Right */}
-            <div className="space-y-8">
-              <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
-                <h3 className="text-2xl font-semibold mb-4">
-                  Email Composer
-                </h3>
+                    <div className="flex gap-3 mt-5">
+                      <button
+                        onClick={parseCompanies}
+                        className="bg-white text-black px-5 py-3 rounded-xl font-semibold"
+                      >
+                        Load Companies
+                      </button>
 
-                <input
-                  value={subject}
-                  placeholder="Subject"
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 mb-4"
-                />
-
-                <textarea
-                  rows={8}
-                  placeholder="Email"
-                  value={emailBody}
-                  onChange={(e) =>
-                    setEmailBody(e.target.value)
-                  }
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 mb-4"
-                />
-
-                <input
-                  placeholder="Test Email"
-                  value={testEmail}
-                  onChange={(e) =>
-                    setTestEmail(e.target.value)
-                  }
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3"
-                />
-              </div>
-
-              <button
-                onClick={startCampaign}
-                disabled={isRunning}
-                className="w-full bg-white text-black py-4 rounded-2xl font-bold text-lg disabled:opacity-50"
-              >
-                {isRunning
-                  ? "Running Campaign..."
-                  : "Start Campaign"}
-              </button>
-
-              <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
-                <h3 className="text-2xl font-semibold mb-4">
-                  Live Logs
-                </h3>
-
-                <div className="space-y-2 max-h-80 overflow-auto">
-                  {logs.map((log, i) => (
-                    <div
-                      key={i}
-                      className="bg-zinc-800 rounded-xl px-4 py-3 text-sm"
-                    >
-                      {log}
+                      <button
+                        onClick={clearAll}
+                        className="border border-zinc-700 px-5 py-3 rounded-xl"
+                      >
+                        Clear
+                      </button>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+                    <h3 className="text-2xl font-semibold mb-4">
+                      Upload Resume
+                    </h3>
+
+                    <label className="inline-block bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded-xl cursor-pointer">
+                      Choose Resume
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={(e) =>
+                          setResumeFile(
+                            e.target.files?.[0] || null
+                          )
+                        }
+                      />
+                    </label>
+
+                    {resumeFile && (
+                      <p className="text-zinc-400 mt-3 text-sm">
+                        {resumeFile.name}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Move Live Logs to Left Side */}
+                  <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+                    <h3 className="text-2xl font-semibold mb-4">
+                      Live Logs
+                    </h3>
+
+                    <div className="space-y-2 max-h-80 overflow-auto">
+                      {logs.map((log, i) => (
+                        <div
+                          key={i}
+                          className="bg-zinc-800 rounded-xl px-4 py-3 text-sm"
+                        >
+                          {log}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right */}
+                <div className="space-y-8">
+                  <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+                    <h3 className="text-2xl font-semibold mb-4">
+                      Enter Your Name
+                    </h3>
+                    <input
+                      placeholder="Your Name (Replaces {{name}})"
+                      value={senderName}
+                      onChange={(e) => setSenderName(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3"
+                    />
+                  </div>
+
+                  <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+                    <h3 className="text-2xl font-semibold mb-4">
+                      Email Composer
+                    </h3>
+
+                    <input
+                      value={subject}
+                      placeholder="Subject"
+                      onChange={(e) => setSubject(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 mb-4"
+                    />
+
+                    <textarea
+                      rows={8}
+                      placeholder="Email"
+                      value={emailBody}
+                      onChange={(e) =>
+                        setEmailBody(e.target.value)
+                      }
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 mb-4"
+                    />
+
+                    <input
+                      placeholder="Test Email"
+                      value={testEmail}
+                      onChange={(e) =>
+                        setTestEmail(e.target.value)
+                      }
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3"
+                    />
+                  </div>
+
+                  <button
+                    onClick={startCampaign}
+                    disabled={isRunning}
+                    className="w-full bg-white text-black py-4 rounded-2xl font-bold text-lg disabled:opacity-50"
+                  >
+                    {isRunning
+                      ? "Running Campaign..."
+                      : "Start Campaign"}
+                  </button>
                 </div>
               </div>
+            </>
+          )}
+
+          {activeTab === "settings" && (
+            <div className="max-w-2xl">
+              <h2 className="text-4xl font-bold mb-2">
+                Settings
+              </h2>
+              <p className="text-zinc-400 mb-8">
+                Configure your API keys and email credentials.
+              </p>
+
+              <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+                <h3 className="text-2xl font-semibold mb-4">
+                  Credentials & API Keys
+                </h3>
+                <h4>Easy Config</h4>
+                <p className="text-zinc-400 text-sm mb-6">
+                  (Use this only if .env file is not configured)
+                </p>
+                <br></br>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-2">Gmail Address (Required if not in .env)</label>
+                    <input
+                      placeholder="e.g. user@gmail.com"
+                      value={emailUser}
+                      onChange={(e) => setEmailUser(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-2">App Password (Required if not in .env)</label>
+                    <input
+                      placeholder="16-character App Password"
+                      type="password"
+                      value={emailPass}
+                      onChange={(e) => setEmailPass(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-2">Serper API Key (Required if not in .env)</label>
+                    <input
+                      placeholder="Serper API Key"
+                      type="password"
+                      value={serpApiKey}
+                      onChange={(e) => setSerpApiKey(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-2">Gemini API Key (Optional)</label>
+                    <input
+                      placeholder="Gemini API Key"
+                      type="password"
+                      value={geminiApiKey}
+                      onChange={(e) => setGeminiApiKey(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-12 flex flex-col sm:flex-row sm:items-center justify-between border-t border-zinc-800 pt-8 pb-2 gap-6">
+                  <p className={`text-sm ${settingsSaved ? "text-emerald-400" : "text-zinc-500"}`}>
+                    {settingsSaved ? "✅ Settings applied successfully!" : "Ensure all required keys are provided."}
+                  </p>
+                  <div className="flex sm:justify-end">
+                    <button
+                      onClick={() => {
+                        setSettingsSaved(true);
+                        setTimeout(() => setSettingsSaved(false), 3000);
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors shadow-lg"
+                    >
+                      Apply Settings
+                    </button>
+                  </div>
+                </div>
+
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
     </main>

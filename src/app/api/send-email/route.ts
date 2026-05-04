@@ -10,19 +10,26 @@ export async function POST(req: Request) {
         const text = formData.get("text") as string;
         const resume = formData.get("resume") as File;
 
+        const emailUser = (formData.get("emailUser") as string) || process.env.EMAIL_USER;
+        const emailPass = (formData.get("emailPass") as string) || process.env.EMAIL_PASS;
+
+        if (!emailUser || !emailPass) {
+            return NextResponse.json({ success: false, message: "Missing email credentials" }, { status: 400 });
+        }
+
         const bytes = await resume.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
         const transporter = nodemailer.createTransport({
             service: "gmail",
             auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
+                user: emailUser,
+                pass: emailPass,
             },
         });
 
         await transporter.sendMail({
-            from: process.env.EMAIL_USER,
+            from: emailUser,
             to: to.join(", "),
             subject,
             text,

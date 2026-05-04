@@ -1,3 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-envelope" viewBox="0 0 16 16">
-  <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1zm13 2.383-4.708 2.825L15 11.105zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741M1 11.105l4.708-2.897L1 5.383z"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+
+  <!-- Clipboard (black) -->
+  <path fill="#000" d="M6.5 0A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0zm3 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5z"/>
+  <path fill="#000" d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1A2.5 2.5 0 0 1 9.5 5h-3A2.5 2.5 0 0 1 4 2.5z"/>
+
+  <!-- Tie (light grey) -->
+  <path fill="#d3d3d3" d="
+    M8 5
+    L9.2 6.2
+    L8 7.4
+    L6.8 6.2
+    Z
+    M7.6 7.4
+    L8.4 7.4
+    L8.7 10.5
+    L8 13
+    L7.3 10.5
+    Z
+  "/>
+
+  <!-- Check (white) -->
+  <path d="M5.2 9.3 L6.7 10.8 L10.6 7"
+        stroke="#ffffff"
+        stroke-width="1.4"
+        fill="none"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
 </svg>
