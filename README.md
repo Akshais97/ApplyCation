@@ -1,6 +1,6 @@
 # Job Applier
 
-Automate your job applications by dynamically finding HR and Career emails for a list of companies and sending out customized emails with your resume attached.
+Automate your job applications by dynamically finding HR and Career emails for a list of companies and sending your resume with a custom cover letter as the email body.
 
 ## Optimized for direct recruiter engagement:
 > **Bypasses portal ghosting; targets HR inboxes directly.**
