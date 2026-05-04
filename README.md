@@ -8,6 +8,7 @@ This application is **completely open source and free to use**. It is designed w
 - **No Database:** The app runs entirely by connecting the frontend directly to the required APIs. There is no backend database connected.
 - **Bring Your Own Keys:** You can use your own Gmail credentials and API keys. These can be configured in the `.env.local` file or entered directly into the UI on the frontend.
 
+
 ## Important Security Note
 When using Gmail to send emails through this application, you **MUST** use a **Google App Password**, not your regular Gmail password.
 
@@ -16,6 +17,9 @@ When using Gmail to send emails through this application, you **MUST** use a **G
 2. **2-Step Verification:** If you have 2-Step Verification enabled (which you should), you **cannot** use your main password. You must generate a specific password for this app.
 
 ### How to Generate an App Password
+Refer to Video Guide:
+https://www.youtube.com/watch?v=MkLX85XU5rU
+
 1. Go to your [Google Account](https://myaccount.google.com/).
 2. Navigate to **Security**.
 3. Under "Signing in to Google", select **2-Step Verification** (if not already enabled, you'll need to enable it first).
@@ -27,9 +31,20 @@ When using Gmail to send emails through this application, you **MUST** use a **G
 9. **Copy this password immediately** and paste it into the "App Password" field in the Job Applier interface or your `.env.local` file.
 
 ### How to GET A SERP API Key for free:
-Sign Up here: https://serper.dev
-You will see your free API key with 2500 searches remaining
-Copy it and paste it into the SERP API Key field in the app.
+Video Guide:
+https://www.youtube.com/watch?v=zN7aDuq0c9A
+
+1. Sign Up here: https://serper.dev
+2. You will see your free API key with 2500 searches remaining
+3. Copy it and paste it into the SERP API Key field in the app.
+
+
+## OPTIONAL and NOT REQUIRED in 99% of the cases : How to GET A GEMINI API Key for free:
+Refer to Video Guide: https://www.youtube.com/watch?v=6BRyynZkvf0
+
+1. Sign Up here: https://aistudio.google.com/
+2. You will see your free API key with 60 queries per minute
+3. Copy it and paste it into the GEMINI API Key field in the app.
 
 ### Features
 1. **Find Emails:** Uses Serper.dev (and optionally Gemini) to intelligently search the web for public HR and Career emails of a given company.
