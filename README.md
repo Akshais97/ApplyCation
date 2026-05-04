@@ -2,6 +2,11 @@
 
 Automate your job applications by dynamically finding HR and Career emails for a list of companies and sending out customized emails with your resume attached.
 
+##Optimized for direct recruiter engagement:
+> **Bypasses portal ghosting; targets HR inboxes directly.**
+
+
+targets HR inboxes.
 ## How it Works
 This application is **completely open source and free to use**. It is designed with privacy and simplicity in mind:
 - **No Data Collection:** None of your data, emails, or resumes are stored on any external server.
