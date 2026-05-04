@@ -39,10 +39,10 @@ function safeParse(
 
 function extractEmails(
     text: string
-) {
-    return text.match(
+): string[] {
+    return (text.match(
         EMAIL_REGEX
-    ) || [];
+    ) || []) as string[];
 }
 
 export async function POST(
