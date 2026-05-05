@@ -7,7 +7,7 @@ Automate your job applications by dynamically finding HR and Career emails for a
 
 > Live Link: https://applycation.vercel.app/
 
-## How it Works
+## Completely Open Source and FREE
 This application is **completely open source and free to use**. It is designed with privacy and simplicity in mind:
 - **No Data Collection:** None of your data, emails, or resumes are stored on any external server.
 - **No Database:** The app runs entirely by connecting the frontend directly to the required APIs. There is no backend database connected.
