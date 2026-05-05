@@ -21,7 +21,7 @@ When using Gmail to send emails through this application, you **MUST** use a **G
 1. **Security:** Google does not allow direct SMTP connections using your standard account password, especially for applications that are not officially verified by Google.
 2. **2-Step Verification:** If you have 2-Step Verification enabled (which you should), you **cannot** use your main password. You must generate a specific password for this app.
 
-### How to Generate an App Password
+### **How to Generate an App Password**
 Refer to Video Guide:
 https://www.youtube.com/watch?v=MkLX85XU5rU
 
@@ -35,7 +35,7 @@ https://www.youtube.com/watch?v=MkLX85XU5rU
 8. Google will display a **16-character password**.
 9. **Copy this password immediately** and paste it into the "App Password" field in the Job Applier interface or your `.env.local` file.
 
-### How to GET A SERP API Key for free:
+### **How to GET A SERP API Key for free:**
 Video Guide:
 https://www.youtube.com/watch?v=zN7aDuq0c9A
 
