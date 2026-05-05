@@ -5,6 +5,7 @@ Automate your job applications by dynamically finding HR and Career emails for a
 ## Optimized for direct recruiter engagement:
 > **Bypasses portal ghosting; targets HR inboxes directly.**
 
+> Live Link: https://applycation.vercel.app/
 
 ## How it Works
 This application is **completely open source and free to use**. It is designed with privacy and simplicity in mind:
