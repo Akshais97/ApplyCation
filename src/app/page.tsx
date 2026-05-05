@@ -31,9 +31,7 @@ Thank you for your time.
 Best regards,
 {{name}}`);
 
-  const [testEmail, setTestEmail] = useState(
-    "test@gmail.com"
-  );
+
 
   const [isRunning, setIsRunning] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -83,50 +81,8 @@ Best regards,
       return;
     }
 
-    /* -------------------------
-        TEST MODE
-    --------------------------*/
     if (companies.length === 0) {
-      if (!testEmail.trim()) {
-        alert("Upload companies or enter a test email.");
-        return;
-      }
-
-      try {
-        setIsRunning(true);
-        const formData = new FormData();
-        const finalSubjectTest = subject.replace(/{{company}}/g, "[Test Company]");
-        const finalBodyTest = emailBody
-          .replace(/{{company}}/g, "[Test Company]")
-          .replace(/{{name}}/g, senderName || "[Your Name]");
-
-        formData.append("to", testEmail);
-        formData.append("subject", finalSubjectTest);
-        formData.append("text", finalBodyTest);
-        formData.append("resume", resumeFile);
-        formData.append("emailUser", emailUser);
-        formData.append("emailPass", emailPass);
-
-        const res = await fetch("/api/send-email", {
-          method: "POST",
-          body: formData,
-        });
-
-        const data = await res.json();
-        if (res.status === 400 && data.message?.toLowerCase().includes("credentials")) {
-          alert("Missing Email Credentials! Please add them in Settings or .env.local");
-          setIsRunning(false);
-          return;
-        }
-        if (data.success) {
-          setLogs((prev) => [`Test email sent to ${testEmail}`, ...prev]);
-        } else {
-          alert("Failed to send test email.");
-        }
-      } catch {
-        alert("Failed to send test email.");
-      }
-      setIsRunning(false);
+      alert("Upload companies first.");
       return;
     }
 
@@ -251,6 +207,12 @@ Best regards,
           >
             Settings
           </div>
+          <div
+            onClick={() => setActiveTab("instructions")}
+            className={`${activeTab === "instructions" ? "bg-blue-600/20 border border-blue-500 text-blue-300" : "hover:bg-zinc-800 text-zinc-300"} px-4 py-3 rounded-xl cursor-pointer transition-colors`}
+          >
+            Getting Started
+          </div>
         </nav>
       </aside>
 
@@ -268,7 +230,7 @@ Best regards,
                     href="https://github.com/Akshais97/JobApplier/blob/main/README.md"
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-block bg-zinc-950 text-blue-400 hover:bg-blue-900/20 font-semibold px-4 py-1.5 rounded-xl transition-colors text-sm"
+                    className="inline-block bg-zinc-950 text-blue-400 hover:bg-blue-900/30 font-bold text-lg px-8 py-4 rounded-2xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105"
                   >
                     Setup Guide
                   </a>
@@ -428,15 +390,6 @@ Best regards,
                       onChange={(e) =>
                         setEmailBody(e.target.value)
                       }
-                      className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 mb-4"
-                    />
-
-                    <input
-                      placeholder="Test Email"
-                      value={testEmail}
-                      onChange={(e) =>
-                        setTestEmail(e.target.value)
-                      }
                       className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3"
                     />
                   </div>
@@ -447,8 +400,8 @@ Best regards,
                     className="w-full bg-white text-black py-4 rounded-2xl font-bold text-lg disabled:opacity-50"
                   >
                     {isRunning
-                      ? "Running Campaign..."
-                      : "Start Campaign"}
+                      ? "Sending Applications..."
+                      : "Send Applications"}
                   </button>
                 </div>
               </div>
@@ -532,6 +485,86 @@ Best regards,
                   </div>
                 </div>
 
+              </div>
+            </div>
+          )}
+
+          {activeTab === "instructions" && (
+            <div className="max-w-3xl">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-4xl font-bold">
+                  Instructions
+                </h2>
+                <a
+                  href="https://github.com/Akshais97/JobApplier/blob/main/README.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block bg-zinc-950 text-blue-400 hover:bg-blue-900/30 font-bold text-lg px-8 py-4 rounded-2xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105"
+                >
+                  Setup Guide
+                </a>
+              </div>
+              <p className="text-zinc-400 mb-8">
+                Follow these steps to set up and start your campaign.
+              </p>
+
+              <div className="space-y-6 mb-8">
+                <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+                  <h3 className="text-xl font-bold mb-3 text-white">1. Configure Settings</h3>
+                  <p className="text-zinc-400 mb-2">Go to Settings and add:</p>
+                  <ul className="list-disc pl-5 text-zinc-400 space-y-1">
+                    <li>Gmail Address</li>
+                    <li>Google App Password (NOT Gmail password, Refer to <a href="https://github.com/Akshais97/JobApplier/blob/main/README.md" style={{ color: "blue", textDecoration: "underline" }}>Setup Guide</a>. One time setup only.)</li>
+                    <li>Serper API Key (Refer to <a href="https://github.com/Akshais97/JobApplier/blob/main/README.md" style={{ color: "blue", textDecoration: "underline" }}>Setup Guide</a>. One time setup only.)</li>
+                    <li>(Optional) Gemini API Key</li>
+                  </ul>
+                  <p className="text-zinc-400 mt-2">Click <strong>Apply Settings</strong>.</p>
+                </div>
+
+                <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+                  <h3 className="text-xl font-bold mb-3 text-white">2. Go to Dashboard: <br></br><br></br>Upload Companies</h3>
+                  <p className="text-zinc-400 mb-2">Upload a <code className="bg-zinc-800 px-1 rounded">.txt</code> file containing company names (one company per line), then click <strong>Load Companies</strong>.<br></br>(Load Company Button will Automatically fetch company HR Emails, don't forget this step)</p>
+                  <p className="text-zinc-400">Example:</p>
+                  <div className="bg-zinc-950 p-3 rounded-xl mt-2 text-sm text-zinc-300 font-mono leading-relaxed">
+                    Google<br />Microsoft<br />Adobe<br />Stripe
+                  </div>
+                </div>
+
+                <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+                  <h3 className="text-xl font-bold mb-3 text-white">3. Upload Resume</h3>
+                  <p className="text-zinc-400">Upload your latest resume file using <strong>Choose Resume</strong>.</p>
+                </div>
+
+                <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+                  <h3 className="text-xl font-bold mb-3 text-white">4. Customize Name, Subject and Body in the Email</h3>
+                  <p className="text-zinc-400 mb-2">Enter your name and edit the email subject/body template.</p>
+                  <p className="text-zinc-400 mb-1">Use:</p>
+                  <ul className="list-disc pl-5 text-zinc-400 space-y-1">
+                    <li><code className="bg-zinc-800 px-1 rounded">{"{{company}}"}</code> → automaticlly fetches and inserts company name</li>
+                    <li><code className="bg-zinc-800 px-1 rounded">{"{{name}}"}</code> → automatically inserts your name</li>
+                  </ul>
+                </div>
+
+                <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+                  <h3 className="text-xl font-bold mb-3 text-white">5. Send Applications</h3>
+                  <p className="text-zinc-400 mb-2">Click <strong>Send Applications</strong> to send applications automatically:</p>
+                  <ul className="list-disc pl-5 text-zinc-400 space-y-1">
+                    <li>Finding HR/career emails</li>
+                    <li>Sending personalized applications with your resume attached</li>
+                  </ul>
+                </div>
+
+                <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+                  <h3 className="text-xl font-bold mb-3 text-white">6. Track Progress if you'd like</h3>
+                  <p className="text-zinc-400 mb-2">Monitor in Live Logs:</p>
+                  <ul className="list-disc pl-5 text-zinc-400 space-y-1 mb-4">
+                    <li>Sent emails</li>
+                    <li>Failed attempts</li>
+                    <li>Progress percentage</li>
+                    <li>Live Logs in real time</li>
+                  </ul>
+                  <p className="text-blue-400 font-medium">That's it: Upload, Configure, and Automate your outreach.</p>
+                </div>
               </div>
             </div>
           )}
